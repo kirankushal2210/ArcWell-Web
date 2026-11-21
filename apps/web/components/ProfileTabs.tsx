@@ -247,6 +247,7 @@ export function ProfileTabs({
             <RailButton icon="rupee" label="Renew and request payment" />
             <RailButton icon="list" label="Edit plan" />
             <RailButton icon="send" label="Share progress report" href={`/coach/clients/${client.id}/report`} />
+            <RailButton icon="list" label="AI draft of next block" note="Elite" href={`/coach/clients/${client.id}/ai-draft`} />
           </div>
         </Card>
         <Card>
