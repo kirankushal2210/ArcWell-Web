@@ -1,7 +1,7 @@
 // Pure helpers: sorting, filtering and the numbers the screens show. No React, no data fetching,
 // so these are the functions a unit test suite would cover first.
 
-import type { CheckIn, Client, ClientStatus, FormerClient, Journey, JourneyStage, Lead, LeadStage, Message, Plan, PlanDay, Tier } from "./data";
+import type { CheckIn, Client, ClientStatus, Food, FormerClient, Journey, JourneyStage, Lead, LeadStage, Message, Plan, PlanDay, Tier } from "./data";
 
 export const STATUS_ORDER: Record<ClientStatus, number> = {
   active: 0,
@@ -689,4 +689,42 @@ export function churnByMonth(former: FormerClient[], today: Date = new Date()): 
     out.push({ month: d.toLocaleDateString("en-IN", { month: "short" }), count: former.filter((f) => f.left.startsWith(key)).length });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------- foods */
+
+/** Foods matching a search by name, any regional name, or category. */
+export function searchFoods(foods: Food[], query: string, category: string = "All"): Food[] {
+  const q = query.trim().toLowerCase();
+  return foods.filter(
+    (f) =>
+      (category === "All" || f.category === category) &&
+      (!q || f.name.toLowerCase().includes(q) || f.aka.some((a) => a.toLowerCase().includes(q)) || f.category.toLowerCase().includes(q)),
+  );
+}
+
+export type DietItem = { foodId: string; qty: number };
+export type Totals = { kcal: number; protein: number; carbs: number; fat: number };
+
+/** Live totals for a set of items, by measure quantity. */
+export function dietTotals(items: DietItem[], foods: Food[]): Totals {
+  return items.reduce<Totals>(
+    (t, i) => {
+      const f = foods.find((x) => x.id === i.foodId);
+      if (!f) return t;
+      return { kcal: t.kcal + f.kcal * i.qty, protein: t.protein + f.protein * i.qty, carbs: t.carbs + f.carbs * i.qty, fat: t.fat + f.fat * i.qty };
+    },
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+  );
+}
+
+/**
+ * Starting targets from the latest weight: protein at 1.8 g per kg, and calories at about
+ * 28 kcal per kg for a fat-loss goal or 33 for gaining. A coach adjusts them per client.
+ */
+export function dietTargets(client: Client): { kcal: number; protein: number } | null {
+  const w = client.weights[client.weights.length - 1];
+  if (w === undefined) return null;
+  const gaining = /muscle|stronger|build/i.test(client.goal);
+  return { kcal: Math.round((w * (gaining ? 33 : 28)) / 50) * 50, protein: Math.round(w * 1.8) };
 }
