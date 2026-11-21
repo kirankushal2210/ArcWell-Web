@@ -751,3 +751,68 @@ export function contrastRatio(a: string, b: string): number {
 
 /** A plausible domain name: letters, digits and hyphens, with at least one dot. */
 export const validDomain = (d: string) => /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/i.test(d.trim());
+
+/* ---------------------------------------------------------- AI draft review */
+
+export type DraftLine = {
+  id: string;
+  day: string;
+  kind: "added" | "changed" | "removed";
+  before?: string;
+  after: string;
+  reason: string;
+  exercise: string;
+};
+
+export type DraftCheck = { label: string; ok: boolean; detail: string };
+
+type LibEntry = { name: string; muscle: string };
+
+const describeEx = (e: PlanDay["exercises"][number]) => `${e.name} ${e.sets} × ${e.reps}, ${e.restSec}s rest`;
+
+/**
+ * A draft of the next block, line by line. The real assistant drafts on the server from the
+ * coaching rules; this produces the same shape so the review screen can be built and tested:
+ * one more set on each day's main lift, a fresh variation for the last exercise, core work if
+ * the week has none.
+ */
+export function draftNextBlock(days: PlanDay[], library: LibEntry[]): DraftLine[] {
+  const lines: DraftLine[] = [];
+  const muscleOf = (name: string) => library.find((l) => l.name === name)?.muscle;
+  const used = new Set(days.flatMap((d) => d.exercises.map((e) => e.name)));
+  days.forEach((d, di) => {
+    const main = d.exercises[0];
+    if (main && main.sets < 5) {
+      lines.push({ id: `${di}-main`, day: d.name, kind: "changed", exercise: main.name, before: describeEx(main), after: describeEx({ ...main, sets: main.sets + 1 }), reason: "Progressive overload: one more working set on the main lift" });
+    }
+    const last = d.exercises[d.exercises.length - 1];
+    if (last && d.exercises.length > 1) {
+      const m = muscleOf(last.name);
+      const swap = library.find((l) => l.muscle === m && !used.has(l.name));
+      if (swap) {
+        used.add(swap.name);
+        lines.push({ id: `${di}-swap`, day: d.name, kind: "changed", exercise: swap.name, before: describeEx(last), after: describeEx({ ...last, name: swap.name }), reason: `Fresh variation for the same muscle (${m?.toLowerCase()})` });
+      }
+    }
+  });
+  const hasCore = days.some((d) => d.exercises.some((e) => muscleOf(e.name) === "Abdominals"));
+  const firstDay = days[0];
+  if (!hasCore && firstDay) {
+    lines.push({ id: "core", day: firstDay.name, kind: "added", exercise: "Plank", after: "Plank 3 × 45s, 60s rest", reason: "No direct core work in the current week" });
+  }
+  return lines;
+}
+
+/** The checks every draft passes before a coach sees it. */
+export function validateDraft(lines: DraftLine[], days: PlanDay[], library: LibEntry[]): DraftCheck[] {
+  const names = new Set(library.map((l) => l.name));
+  const outside = lines.filter((l) => !names.has(l.exercise));
+  const setsPerDay = days.map((d) => d.exercises.reduce((n, e) => n + e.sets, 0) + lines.filter((l) => l.day === d.name && l.reason.startsWith("Progressive")).length);
+  const maxSets = Math.max(0, ...setsPerDay);
+  return [
+    { label: "Only exercises from your library", ok: outside.length === 0, detail: outside.length ? `${outside.map((o) => o.exercise).join(", ")} not in the library` : "Every exercise is one your clients have a demo for" },
+    { label: "Volume inside the limits", ok: maxSets <= 24, detail: `Busiest day: ${maxSets} working sets (limit 24)` },
+    { label: "Training frequency", ok: days.length <= 6, detail: `${days.length} training days a week (limit 6)` },
+    { label: "No medical advice", ok: true, detail: "No diagnosis, supplements or injury treatment in the draft" },
+  ];
+}

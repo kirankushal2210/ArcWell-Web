@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { shortDate } from "@/lib/domain";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { Avatar, Kbd } from "./ui";
 
 const TITLES: { match: (p: string) => boolean; title: string }[] = [
@@ -52,8 +53,51 @@ export function Topbar({ coachName }: { coachName: string }) {
           />
           <Kbd>⌘K</Kbd>
         </label>
-        <Avatar name={coachName} size={32} />
+        <AccountMenu name={coachName} />
       </div>
     </header>
+  );
+}
+
+/** The avatar opens the coach menu: profile, plan and billing, sign out. */
+function AccountMenu({ name }: { name: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    ref.current?.querySelector<HTMLElement>("a")?.focus();
+    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const items: { href: string; label: string; icon: IconName }[] = [
+    { href: "/coach/settings", label: "Profile and settings", icon: "settings" },
+    { href: "/coach/billing", label: "Plan and billing", icon: "rupee" },
+    { href: "/sign-in", label: "Sign out", icon: "logout" },
+  ];
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} aria-label={`Account menu for ${name}`} className="rounded-full transition-transform duration-[120ms] ease-quiet active:scale-95">
+        <Avatar name={name} size={32} />
+      </button>
+      {open ? (
+        <div role="menu" className="absolute right-0 top-11 z-30 w-56 rounded-xl border border-line bg-card p-1.5 shadow-md">
+          <p className="border-b border-line px-2.5 pb-2 pt-1 text-sm">
+            <span className="block font-medium">{name}</span>
+          </p>
+          {items.map((i) => (
+            <Link key={i.href} href={i.href} role="menuitem" onClick={() => setOpen(false)} className="mt-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-base hover:bg-surface focus:bg-surface">
+              <Icon name={i.icon} size={15} className="text-muted" />
+              {i.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
