@@ -728,3 +728,26 @@ export function dietTargets(client: Client): { kcal: number; protein: number } |
   const gaining = /muscle|stronger|build/i.test(client.goal);
   return { kcal: Math.round((w * (gaining ? 33 : 28)) / 50) * 50, protein: Math.round(w * 1.8) };
 }
+
+/* ------------------------------------------------------------------ brand */
+
+/** WCAG relative luminance of a #rrggbb colour. */
+function luminance(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 0;
+  const n = parseInt(m[1] as string, 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * (ch[0] as number) + 0.7152 * (ch[1] as number) + 0.0722 * (ch[2] as number);
+}
+
+/** Contrast ratio between two colours, 1 to 21. Text needs 4.5 or more. */
+export function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return Math.round(((hi + 0.05) / (lo + 0.05)) * 10) / 10;
+}
+
+/** A plausible domain name: letters, digits and hyphens, with at least one dot. */
+export const validDomain = (d: string) => /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/i.test(d.trim());

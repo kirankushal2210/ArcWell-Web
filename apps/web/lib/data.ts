@@ -582,3 +582,33 @@ export const RECIPES: Recipe[] = [
 ];
 
 export const MEAL_SLOTS = ["Breakfast", "Lunch", "Evening snack", "Dinner"] as const;
+
+/* ------------------------------------------------------------------- team */
+
+/** People who work in the coach's workspace. Assistants see only the clients assigned to them. */
+export type TeamMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: "Owner" | "Assistant";
+  status: "Active" | "Invited";
+  clientIds: string[];
+  lastActive: string | null;
+};
+
+export const TEAM: TeamMember[] = [
+  { id: "t0", name: "Anjali Rao", email: "anjali@arcwell.test", role: "Owner", status: "Active", clientIds: [], lastActive: isoDaysAgo(0) },
+  { id: "t1", name: "Rehan Siddiqui", email: "rehan@arcwell.test", role: "Assistant", status: "Active", clientIds: ["c03", "c05", "c09", "c14", "c21"], lastActive: isoDaysAgo(1) },
+  { id: "t2", name: "Meenakshi Iyer", email: "meenakshi@arcwell.test", role: "Assistant", status: "Active", clientIds: ["c06", "c10", "c18"], lastActive: isoDaysAgo(3) },
+];
+
+/** Every action records who did it, so the owner can see who last touched a client. */
+export type Activity = { id: string; who: string; what: string; client?: string; at: string };
+
+export const TEAM_ACTIVITY: Activity[] = [
+  { id: "a1", who: "Rehan Siddiqui", what: "reviewed the week 6 check-in", client: "Arjun Mehta", at: isoDaysAgo(1) },
+  { id: "a2", who: "Rehan Siddiqui", what: "edited the training plan", client: "Rahul Verma", at: isoDaysAgo(1) },
+  { id: "a3", who: "Meenakshi Iyer", what: "replied to a message", client: "Meera Joshi", at: isoDaysAgo(3) },
+  { id: "a4", who: "Anjali Rao", what: "assigned 3 clients to Meenakshi Iyer", at: isoDaysAgo(5) },
+  { id: "a5", who: "Meenakshi Iyer", what: "reviewed the week 4 check-in", client: "Sneha Kulkarni", at: isoDaysAgo(6) },
+];
