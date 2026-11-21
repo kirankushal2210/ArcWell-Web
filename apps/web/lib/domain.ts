@@ -1,7 +1,7 @@
 // Pure helpers: sorting, filtering and the numbers the screens show. No React, no data fetching,
 // so these are the functions a unit test suite would cover first.
 
-import type { CheckIn, Client, ClientStatus, FormerClient, Journey, JourneyStage, Message } from "./data";
+import type { CheckIn, Client, ClientStatus, FormerClient, Journey, JourneyStage, Message, Plan, PlanDay } from "./data";
 
 export const STATUS_ORDER: Record<ClientStatus, number> = {
   active: 0,
@@ -573,3 +573,71 @@ export function broadcastAudience(clients: Client[], audience: Audience): Client
 
 export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 export const formatSeconds = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+/* ------------------------------------------------------------------- plans */
+
+export type PlanFilter = "all" | "needs" | "active" | "ending";
+export const PLAN_FILTER_LABELS: Record<PlanFilter, string> = { all: "Everyone", needs: "Needs planning", active: "Active", ending: "Ending" };
+
+/** The one thing to do with a client's plan. */
+export function planNextAction(p: Plan): { label: string; urgent: boolean } {
+  if (p.status === "none") return { label: "Build a plan", urgent: true };
+  if (p.status === "ending" || p.week >= p.weeks) return { label: "Start next block", urgent: true };
+  if (p.status === "draft") return { label: "Finish and send", urgent: false };
+  return { label: "Continue", urgent: false };
+}
+
+/** Needs-planning first, then ending, then by week. */
+export function sortPlans(plans: Plan[], filter: PlanFilter): Plan[] {
+  const rank = (p: Plan) => (p.status === "none" ? 0 : p.status === "ending" || p.week >= p.weeks ? 1 : p.status === "draft" ? 2 : 3);
+  return plans
+    .filter((p) => (filter === "all" ? true : filter === "needs" ? p.status === "none" : filter === "ending" ? p.status === "ending" || p.week >= p.weeks : p.status === "active"))
+    .sort((a, b) => rank(a) - rank(b) || b.week - a.week || a.clientName.localeCompare(b.clientName));
+}
+
+export type PlanChange = { day: string; kind: "added" | "removed" | "changed"; name: string; detail: string };
+
+const lineOf = (e: PlanDay["exercises"][number]) => `${e.sets} × ${e.reps}, ${e.restSec}s rest${e.load ? `, ${e.load}` : ""}`;
+
+/** What changed between two versions of a week, line by line, so a coach can explain it. */
+export function planDiff(before: PlanDay[], after: PlanDay[]): PlanChange[] {
+  const out: PlanChange[] = [];
+  const days = Math.max(before.length, after.length);
+  for (let i = 0; i < days; i += 1) {
+    const a = before[i];
+    const b = after[i];
+    const dayName = b?.name ?? a?.name ?? `Day ${i + 1}`;
+    if (!a && b) {
+      out.push({ day: dayName, kind: "added", name: "Whole day", detail: `${b.exercises.length} exercises` });
+      continue;
+    }
+    if (a && !b) {
+      out.push({ day: dayName, kind: "removed", name: "Whole day", detail: `${a.exercises.length} exercises` });
+      continue;
+    }
+    if (!a || !b) continue;
+    const prev = new Map(a.exercises.map((e) => [e.name, e]));
+    const next = new Map(b.exercises.map((e) => [e.name, e]));
+    for (const [name, e] of next) {
+      const old = prev.get(name);
+      if (!old) out.push({ day: dayName, kind: "added", name, detail: lineOf(e) });
+      else if (lineOf(old) !== lineOf(e)) out.push({ day: dayName, kind: "changed", name, detail: `${lineOf(old)} → ${lineOf(e)}` });
+    }
+    for (const [name, e] of prev) if (!next.has(name)) out.push({ day: dayName, kind: "removed", name, detail: lineOf(e) });
+    const order = (d: PlanDay) => d.exercises.map((e) => e.name).filter((n) => prev.has(n) && next.has(n)).join("|");
+    if (order(a) !== order(b)) out.push({ day: dayName, kind: "changed", name: "Order", detail: "Exercises reordered" });
+  }
+  return out;
+}
+
+/** Move an item within a list, for drag and keyboard reordering. */
+export function moveItem<T>(list: T[], from: number, to: number): T[] {
+  if (to < 0 || to >= list.length || from === to) return list;
+  const copy = [...list];
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item as T);
+  return copy;
+}
+
+/** A deep copy of a week, so edits never touch the source plan. */
+export const cloneDays = (days: PlanDay[]): PlanDay[] => days.map((d) => ({ name: d.name, exercises: d.exercises.map((e) => ({ ...e })) }));
