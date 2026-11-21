@@ -452,3 +452,30 @@ export function journeyFlag(v: JourneyView): string | null {
   if (v.stage === "maintenance") return "Maintenance ending";
   return null;
 }
+
+/* ---------------------------------------------------------------- progress */
+
+/**
+ * Weigh-ins are weekly; the last one is the latest check-in (or today without one). Returns one
+ * ISO date per weight, oldest first.
+ */
+export function weighInDates(client: Client, today: Date = new Date()): string[] {
+  const last = client.lastCheckIn ?? today.toISOString().slice(0, 10);
+  const n = client.weights.length;
+  return client.weights.map((_, i) => addDays(last, -(n - 1 - i) * 7));
+}
+
+export type Range = "4w" | "12w" | "all";
+export const RANGE_LABELS: Record<Range, string> = { "4w": "4 weeks", "12w": "12 weeks", all: "All" };
+
+/** The weigh-ins inside a range, with how many exist in total so the chart can say so. */
+export function inRange(values: number[], dates: string[], range: Range) {
+  const keep = range === "4w" ? 4 : range === "12w" ? 12 : values.length;
+  const from = Math.max(0, values.length - keep);
+  return { values: values.slice(from), dates: dates.slice(from), short: keep > values.length && range !== "all" };
+}
+
+export function measurementChange(m: { entries: { value: number }[] }): number | null {
+  if (m.entries.length < 2) return null;
+  return Math.round(((m.entries[m.entries.length - 1] as { value: number }).value - (m.entries[0] as { value: number }).value) * 10) / 10;
+}
