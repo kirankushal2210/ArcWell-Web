@@ -64,7 +64,7 @@ export type Message = {
 
 export type PlanDay = {
   name: string;
-  exercises: { name: string; sets: number; reps: string; restSec: number }[];
+  exercises: { name: string; sets: number; reps: string; restSec: number; /** e.g. "60 kg", "RPE 8", "bodyweight" */ load?: string }[];
 };
 
 export type Plan = {
