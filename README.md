@@ -32,13 +32,13 @@ spreadsheet.
 ## Structure
 
 ```
-apps/web/app/(coach)/…      routes
-apps/web/components/        primitives and screen components
-apps/web/lib/data/          the only place that talks to Supabase
-apps/web/lib/domain/        pure logic: adherence, check-in status, sorting
-apps/web/lib/mock/          sample data until the data layer is wired
+apps/web/app/coach/…      routes
+apps/web/components/        screens and primitives
+apps/web/lib/data.ts        all sample data and types (the backend replaces only this)
+apps/web/lib/domain.ts      pure logic: journey, filters, retention, pricing, diet, diffs
 docs/phases/                the 14 phase specifications
-docs/design-tokens.md       the exact tokens to port
+docs/design-tokens.md       the tokens, mirrored from app/globals.css
+CLAUDE.md                   handover: what is built, decisions, what comes next
 ```
 
 ## Run

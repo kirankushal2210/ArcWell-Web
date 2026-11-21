@@ -379,7 +379,7 @@ function QueueGroup({
                 <Avatar name={k.clientName} size={32} />
                 <span className="min-w-0 flex-1">
                   <span className={`block truncate text-base ${done ? "text-muted" : "font-medium"}`}>{k.clientName}</span>
-                  <span className="tnum flex items-center gap-2 font-mono text-xs text-muted">
+                  <span className="tnum flex items-center gap-2 whitespace-nowrap font-mono text-xs text-muted">
                     Week {k.week} · {relativeDay(k.submittedAt)}
                     {k.photos ? (
                       <span className="inline-flex items-center gap-0.5">
