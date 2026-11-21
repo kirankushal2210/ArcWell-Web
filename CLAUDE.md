@@ -33,7 +33,8 @@ Yearly = monthly × 10. Upgrades prorated; downgrades at renewal; GST 18% on inv
 - **Frontend only, for now.** Do not build or set up backend, Supabase, auth, testing infra or
   deployment until the owner says the backend phase has started. Screens run on sample data.
 - **Git:** repo is `github.com/kirankushal2210/ArcWell-Web` (public), branch `main`, commits as
-  `kirankushal2210`. Commit or push only when asked. Work on a branch, then PR and merge.
+  `kirankushal2210 <97666451+kirankushal2210@users.noreply.github.com>` (never any other email).
+  Commit or push only when asked. Work on a branch, then PR and merge.
 - **Later:** when the backend starts, this repo is to be merged into the mobile repo
   `kirankushal2210/arcwell` as a `web/` folder (git subtree, history kept), sharing database
   migrations and types. Not before.
