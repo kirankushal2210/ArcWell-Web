@@ -327,13 +327,33 @@ export const LIBRARY = [
   { name: "Face pull", muscle: "Traps", equipment: "Cable", demo: false },
 ];
 
-export const LEADS = [
-  { name: "Rohan Kapoor", source: "Instagram", stage: "Call booked", due: isoDaysAhead(1) },
-  { name: "Simran Kaur", source: "Referral", stage: "Contacted", due: isoDaysAhead(0) },
-  { name: "Abhishek Rao", source: "LinkedIn", stage: "New", due: isoDaysAhead(3) },
-  { name: "Tara Menon", source: "Website", stage: "Trial", due: isoDaysAhead(2) },
-  { name: "Yash Patel", source: "Instagram", stage: "Contacted", due: isoDaysAhead(5) },
+export type LeadStage = "New" | "Contacted" | "Call booked" | "Trial" | "Converted" | "Lost";
+
+export type Lead = {
+  id: string;
+  name: string;
+  source: string;
+  stage: LeadStage;
+  /** Next follow-up date. */
+  due: string;
+  goal: string;
+  /** Every touch, oldest first. Kept when the lead converts. */
+  history: { date: string; text: string }[];
+  lostReason?: string;
+};
+
+export const LEADS: Lead[] = [
+  { id: "l1", name: "Rohan Kapoor", source: "Instagram", stage: "Call booked", due: isoDaysAhead(1), goal: "Lose 12 kg", history: [{ date: isoDaysAgo(6), text: "DM from the transformation reel" }, { date: isoDaysAgo(3), text: "Sent pricing on WhatsApp" }, { date: isoDaysAgo(1), text: "Call booked for tomorrow 7 pm" }] },
+  { id: "l2", name: "Simran Kaur", source: "Referral", stage: "Contacted", due: isoDaysAhead(0), goal: "Post-pregnancy strength", history: [{ date: isoDaysAgo(4), text: "Referred by Priya Nair" }, { date: isoDaysAgo(2), text: "Intro message sent" }] },
+  { id: "l3", name: "Abhishek Rao", source: "LinkedIn", stage: "New", due: isoDaysAhead(3), goal: "Build muscle", history: [{ date: isoDaysAgo(1), text: "Filled the website form" }] },
+  { id: "l4", name: "Tara Menon", source: "Website", stage: "Trial", due: isoDaysAhead(2), goal: "Run a half marathon", history: [{ date: isoDaysAgo(12), text: "Filled the website form" }, { date: isoDaysAgo(9), text: "Discovery call" }, { date: isoDaysAgo(5), text: "Started a one-week trial" }] },
+  { id: "l5", name: "Yash Patel", source: "Instagram", stage: "Contacted", due: isoDaysAhead(5), goal: "Fat loss", history: [{ date: isoDaysAgo(3), text: "Story reply" }, { date: isoDaysAgo(2), text: "Sent the intake form" }] },
+  { id: "l6", name: "Neeraj Sinha", source: "Referral", stage: "New", due: isoDaysAgo(1), goal: "Back pain, get stronger", history: [{ date: isoDaysAgo(2), text: "Referred by Arjun Mehta" }] },
+  { id: "l7", name: "Pallavi Deshmukh", source: "Website", stage: "Trial", due: isoDaysAhead(1), goal: "Lose 6 kg before a wedding", history: [{ date: isoDaysAgo(14), text: "Filled the website form" }, { date: isoDaysAgo(8), text: "Discovery call" }, { date: isoDaysAgo(6), text: "Started a one-week trial" }] },
+  { id: "l8", name: "Karan Oberoi", source: "Instagram", stage: "Converted", due: isoDaysAgo(10), goal: "HYROX prep", history: [{ date: isoDaysAgo(30), text: "DM from a HYROX post" }, { date: isoDaysAgo(20), text: "Trial week" }, { date: isoDaysAgo(12), text: "Paid the first month" }] },
+  { id: "l9", name: "Fatima Sheikh", source: "Website", stage: "Lost", due: isoDaysAgo(15), goal: "Fat loss", lostReason: "Price", history: [{ date: isoDaysAgo(25), text: "Filled the website form" }, { date: isoDaysAgo(18), text: "Discovery call" }, { date: isoDaysAgo(15), text: "Chose a cheaper app" }] },
 ];
+
 
 export const REVENUE = [
   { month: "Jun", inr: 42000 },
@@ -428,3 +448,36 @@ export const PHOTO_SETS: Record<string, PhotoSet[]> = Object.fromEntries(
       : [],
   ]),
 );
+
+/* ---------------------------------------------------------------- pricing */
+
+/** Arcwell's plans for coaches. Yearly is monthly × 10. No per-client fees. */
+export type Tier = {
+  id: "free" | "solo" | "coach" | "business" | "elite";
+  name: string;
+  clients: string;
+  maxClients: number | null;
+  monthlyInr: number;
+  includes: string[];
+};
+
+export const TIERS: Tier[] = [
+  { id: "free", name: "Free", clients: "1–3 clients", maxClients: 3, monthlyInr: 0, includes: ["Arcwell mobile app", "3 plan types"] },
+  { id: "solo", name: "Solo", clients: "4–7 clients", maxClients: 7, monthlyInr: 499, includes: ["Arcwell mobile app", "All plan types", "Check-ins and messaging"] },
+  { id: "coach", name: "Coach", clients: "8–25 clients", maxClients: 25, monthlyInr: 999, includes: ["Everything in Solo", "Web dashboard", "Journey board and business CRM"] },
+  { id: "business", name: "Business", clients: "26–40 clients", maxClients: 40, monthlyInr: 1999, includes: ["Everything in Coach", "White-label web workspace", "Assistant coaches"] },
+  { id: "elite", name: "Elite", clients: "41+ clients", maxClients: null, monthlyInr: 4999, includes: ["Everything in Business", "AI program assistant", "Unlimited clients"] },
+];
+
+export const GST_RATE = 0.18;
+
+export type Invoice = { id: string; date: string; plan: string; period: string; amountInr: number; status: "Paid" | "Due" };
+
+export const INVOICES: Invoice[] = [0, 1, 2, 3, 4, 5].map((k) => ({
+  id: `AW-2026-${String(118 - k).padStart(4, "0")}`,
+  date: isoDaysAgo(18 + k * 30),
+  plan: "Coach, monthly",
+  period: `${isoDaysAgo(18 + k * 30)} to ${isoDaysAgo(18 + (k - 1) * 30)}`,
+  amountInr: 999,
+  status: "Paid",
+}));
