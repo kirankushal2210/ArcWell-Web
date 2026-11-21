@@ -1,20 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import type { Client, CheckIn, Message, Plan, SAMPLE_WEEK } from "@/lib/data";
+import type { Client, CheckIn, Measurement, Message, PhotoSet, Plan, SAMPLE_WEEK } from "@/lib/data";
 import { goalProgress, inr, journeyView, relativeDay, signed, towardGoal, weightChange } from "@/lib/domain";
 import { JourneyDetail, JourneyTrack } from "./Journey";
-import { AdherenceMeter, Avatar, Button, Card, SectionTitle, StatusBadge } from "./ui";
-import { Bars, LineChart, ProgressRing } from "./charts";
+import { AdherenceMeter, Avatar, Button, Card, SectionTitle, StatusBadge, buttonClass } from "./ui";
+import { Bars, ProgressRing } from "./charts";
+import { Measurements, PhotoStrip, ReportLink, WeightCard } from "./Progress";
 import { Icon, type IconName } from "./icons";
 import { formatRest } from "@/lib/onboarding";
 
-const TABS = ["Overview", "Journey", "Training", "Nutrition", "Recovery"] as const;
+const TABS = ["Overview", "Journey", "Progress", "Training", "Nutrition", "Recovery"] as const;
 
 /** Each pillar keeps its own icon and colour wherever it appears. */
 const TAB_META: Record<(typeof TABS)[number], { icon: IconName; color: string }> = {
   Overview: { icon: "chart", color: "text-ink" },
   Journey: { icon: "calendar", color: "text-brandInk" },
+  Progress: { icon: "camera", color: "text-ink" },
   Training: { icon: "dumbbell", color: "text-training" },
   Nutrition: { icon: "list", color: "text-nutrition" },
   Recovery: { icon: "clock", color: "text-recovery" },
@@ -26,12 +29,16 @@ export function ProfileTabs({
   checkIns,
   messages,
   week,
+  measurements,
+  photos,
 }: {
   client: Client;
   plan: Plan | undefined;
   checkIns: CheckIn[];
   messages: Message[];
   week: typeof SAMPLE_WEEK;
+  measurements: Measurement[];
+  photos: PhotoSet[];
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
   const last = client.weights[client.weights.length - 1] ?? null;
@@ -132,13 +139,7 @@ export function ProfileTabs({
               </Card>
             </div>
 
-            <Card>
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-lg font-semibold">Weight trend</h2>
-                <p className="text-sm text-muted">{client.weights.length} weigh-ins · dashed line is the goal</p>
-              </div>
-              <LineChart values={client.weights} target={client.targetKg} />
-            </Card>
+            <WeightCard client={client} />
 
             <SectionTitle>This week</SectionTitle>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -151,6 +152,23 @@ export function ProfileTabs({
 
         {tab === "Journey" ? (
           <JourneyDetail view={journey} startKg={client.weights[0] ?? null} latestKg={last} targetKg={client.targetKg} />
+        ) : null}
+
+        {tab === "Progress" ? (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Measurements</h2>
+                <p className="text-sm text-muted">Logged by the client in the app, every three weeks</p>
+              </div>
+              <ReportLink clientId={client.id} />
+            </div>
+            <Measurements items={measurements} />
+            <div>
+              <h2 className="mb-3 text-lg font-semibold">Progress photos</h2>
+              <PhotoStrip sets={photos} name={first ?? "The client"} />
+            </div>
+          </div>
         ) : null}
 
         {tab === "Training" ? (
@@ -228,6 +246,8 @@ export function ProfileTabs({
             <RailButton icon="check" label="Review check-in" note={unreviewed ? `${unreviewed} waiting` : undefined} />
             <RailButton icon="rupee" label="Renew and request payment" />
             <RailButton icon="list" label="Edit plan" />
+            <RailButton icon="send" label="Share progress report" href={`/coach/clients/${client.id}/report`} />
+            <RailButton icon="list" label="AI draft of next block" note="Elite" href={`/coach/clients/${client.id}/ai-draft`} />
           </div>
         </Card>
         <Card>
@@ -264,12 +284,21 @@ function WeekTile({ color, label, value }: { color: string; label: string; value
   );
 }
 
-function RailButton({ icon, label, note }: { icon: IconName; label: string; note?: string }) {
-  return (
-    <Button variant="secondary" className="w-full justify-start">
+function RailButton({ icon, label, note, href }: { icon: IconName; label: string; note?: string; href?: string }) {
+  const inner = (
+    <>
       <Icon name={icon} size={15} className="text-muted" />
       <span className="flex-1 text-left">{label}</span>
       {note ? <span className="tnum rounded-full bg-tintBrand px-2 font-mono text-xs text-brandInk">{note}</span> : null}
+    </>
+  );
+  return href ? (
+    <Link href={href} className={`${buttonClass("secondary")} w-full justify-start`}>
+      {inner}
+    </Link>
+  ) : (
+    <Button variant="secondary" className="w-full justify-start">
+      {inner}
     </Button>
   );
 }

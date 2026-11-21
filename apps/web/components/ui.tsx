@@ -124,7 +124,7 @@ export function Skeleton({ lines = 3 }: { lines?: number }) {
 /** Shared button look, also used by links that act as buttons. */
 export function buttonClass(variant: "primary" | "secondary" | "quiet" = "primary") {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-base font-medium transition-[background-color,border-color,color,transform] duration-[120ms] ease-quiet active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100";
+    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-base font-medium transition-[background-color,border-color,color,transform] duration-[120ms] ease-quiet active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100";
   const style =
     variant === "primary"
       ? "bg-brand text-onBrand shadow-sm hover:bg-brandHover active:bg-brandPress"

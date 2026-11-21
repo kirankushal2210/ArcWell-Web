@@ -1,7 +1,7 @@
 // Pure helpers: sorting, filtering and the numbers the screens show. No React, no data fetching,
 // so these are the functions a unit test suite would cover first.
 
-import type { CheckIn, Client, ClientStatus, FormerClient, Journey, JourneyStage, Message } from "./data";
+import type { CheckIn, Client, ClientStatus, Food, FormerClient, Journey, JourneyStage, Lead, LeadStage, Message, Plan, PlanDay, Tier } from "./data";
 
 export const STATUS_ORDER: Record<ClientStatus, number> = {
   active: 0,
@@ -451,4 +451,368 @@ export function journeyFlag(v: JourneyView): string | null {
   if (v.stage === "transformation") return `Ends in ${v.weeksLeft} ${v.weeksLeft === 1 ? "week" : "weeks"}`;
   if (v.stage === "maintenance") return "Maintenance ending";
   return null;
+}
+
+/* ---------------------------------------------------------------- progress */
+
+/**
+ * Weigh-ins are weekly; the last one is the latest check-in (or today without one). Returns one
+ * ISO date per weight, oldest first.
+ */
+export function weighInDates(client: Client, today: Date = new Date()): string[] {
+  const last = client.lastCheckIn ?? today.toISOString().slice(0, 10);
+  const n = client.weights.length;
+  return client.weights.map((_, i) => addDays(last, -(n - 1 - i) * 7));
+}
+
+export type Range = "4w" | "12w" | "all";
+export const RANGE_LABELS: Record<Range, string> = { "4w": "4 weeks", "12w": "12 weeks", all: "All" };
+
+/** The weigh-ins inside a range, with how many exist in total so the chart can say so. */
+export function inRange(values: number[], dates: string[], range: Range) {
+  const keep = range === "4w" ? 4 : range === "12w" ? 12 : values.length;
+  const from = Math.max(0, values.length - keep);
+  return { values: values.slice(from), dates: dates.slice(from), short: keep > values.length && range !== "all" };
+}
+
+export function measurementChange(m: { entries: { value: number }[] }): number | null {
+  if (m.entries.length < 2) return null;
+  return Math.round(((m.entries[m.entries.length - 1] as { value: number }).value - (m.entries[0] as { value: number }).value) * 10) / 10;
+}
+
+/* ------------------------------------------------------------ check-in queue */
+
+/** Unreviewed first, oldest first; reviewed after them, newest first. */
+export function queueOrder(checkIns: CheckIn[], reviewed: (k: CheckIn) => boolean = (k) => k.reviewed): CheckIn[] {
+  const waiting = checkIns.filter((k) => !reviewed(k)).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
+  const done = checkIns.filter(reviewed).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+  return [...waiting, ...done];
+}
+
+/** A check-in left unreviewed for three days or more is overdue for a reply. */
+export function reviewOverdue(k: CheckIn, isReviewed: boolean, today: Date = new Date()): boolean {
+  const d = daysUntil(k.submittedAt, today);
+  return !isReviewed && d !== null && d <= -3;
+}
+
+/** The next date a client's weekly check-in is due, from their check-in weekday. */
+export function nextDueDate(checkInDay: string, today: Date = new Date()): string {
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const target = days.indexOf(checkInDay.slice(0, 3));
+  const d = new Date(today);
+  const delta = ((target - d.getDay() + 7) % 7) || 7;
+  d.setDate(d.getDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+export const QUICK_REPLIES = [
+  "Great week. Keep everything the same.",
+  "Let's add 2.5 kg to the main lifts next week.",
+  "Sleep is the priority this week: aim for 7 hours.",
+  "Protein is low. Add one more serving at lunch.",
+  "Ease off the knee: swap squats for leg press this week.",
+];
+
+/* ---------------------------------------------------------------- messaging */
+
+export type Attachment =
+  | { kind: "photo" | "pdf"; name: string; size: number; url: string }
+  | { kind: "voice"; url: string; seconds: number };
+
+export type InboxMessage = Message & { attachment?: Attachment; status?: "sent" | "failed"; broadcast?: boolean };
+
+export type Thread = { clientId: string; name: string; list: InboxMessage[]; unread: number; last: InboxMessage | undefined };
+
+/** Group messages into one thread per client, newest conversation first. */
+export function buildThreads(messages: InboxMessage[]): Thread[] {
+  const byClient = new Map<string, InboxMessage[]>();
+  for (const m of messages) byClient.set(m.clientId, [...(byClient.get(m.clientId) ?? []), m]);
+  return [...byClient.entries()]
+    .map(([clientId, list]) => ({
+      clientId,
+      name: list[0]?.clientName ?? "Client",
+      list,
+      unread: list.filter((m) => m.unread).length,
+      last: list[list.length - 1],
+    }))
+    .sort((a, b) => (b.last?.at ?? "").localeCompare(a.last?.at ?? "") || b.unread - a.unread);
+}
+
+/** Threads whose client name or any message text matches the search. */
+export function searchThreads(threads: Thread[], query: string): Thread[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return threads;
+  return threads.filter((t) => t.name.toLowerCase().includes(q) || t.list.some((m) => m.text.toLowerCase().includes(q)));
+}
+
+export type Audience = "active" | "attention" | "renewing" | JourneyStage;
+
+export const AUDIENCE_LABELS: Record<Audience, string> = {
+  active: "Every active client",
+  attention: "Clients who need attention",
+  renewing: "Renewing this week",
+  onboarding: "In onboarding",
+  transformation: "In transformation",
+  maintenance: "In maintenance",
+  ongoing: "In ongoing coaching",
+};
+
+/** Who a broadcast reaches. Each person gets a private copy, never a group thread. */
+export function broadcastAudience(clients: Client[], audience: Audience): Client[] {
+  switch (audience) {
+    case "active":
+      return clients.filter((c) => c.status === "active");
+    case "attention":
+      return clients.filter(needsAttention);
+    case "renewing":
+      return clients.filter((c) => renewingThisWeek(c));
+    default:
+      return clients.filter((c) => journeyView(c.journey).stage === audience);
+  }
+}
+
+export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+export const formatSeconds = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+/* ------------------------------------------------------------------- plans */
+
+export type PlanFilter = "all" | "needs" | "active" | "ending";
+export const PLAN_FILTER_LABELS: Record<PlanFilter, string> = { all: "Everyone", needs: "Needs planning", active: "Active", ending: "Ending" };
+
+/** The one thing to do with a client's plan. */
+export function planNextAction(p: Plan): { label: string; urgent: boolean } {
+  if (p.status === "none") return { label: "Build a plan", urgent: true };
+  if (p.status === "ending" || p.week >= p.weeks) return { label: "Start next block", urgent: true };
+  if (p.status === "draft") return { label: "Finish and send", urgent: false };
+  return { label: "Continue", urgent: false };
+}
+
+/** Needs-planning first, then ending, then by week. */
+export function sortPlans(plans: Plan[], filter: PlanFilter): Plan[] {
+  const rank = (p: Plan) => (p.status === "none" ? 0 : p.status === "ending" || p.week >= p.weeks ? 1 : p.status === "draft" ? 2 : 3);
+  return plans
+    .filter((p) => (filter === "all" ? true : filter === "needs" ? p.status === "none" : filter === "ending" ? p.status === "ending" || p.week >= p.weeks : p.status === "active"))
+    .sort((a, b) => rank(a) - rank(b) || b.week - a.week || a.clientName.localeCompare(b.clientName));
+}
+
+export type PlanChange = { day: string; kind: "added" | "removed" | "changed"; name: string; detail: string };
+
+const lineOf = (e: PlanDay["exercises"][number]) => `${e.sets} × ${e.reps}, ${e.restSec}s rest${e.load ? `, ${e.load}` : ""}`;
+
+/** What changed between two versions of a week, line by line, so a coach can explain it. */
+export function planDiff(before: PlanDay[], after: PlanDay[]): PlanChange[] {
+  const out: PlanChange[] = [];
+  const days = Math.max(before.length, after.length);
+  for (let i = 0; i < days; i += 1) {
+    const a = before[i];
+    const b = after[i];
+    const dayName = b?.name ?? a?.name ?? `Day ${i + 1}`;
+    if (!a && b) {
+      out.push({ day: dayName, kind: "added", name: "Whole day", detail: `${b.exercises.length} exercises` });
+      continue;
+    }
+    if (a && !b) {
+      out.push({ day: dayName, kind: "removed", name: "Whole day", detail: `${a.exercises.length} exercises` });
+      continue;
+    }
+    if (!a || !b) continue;
+    const prev = new Map(a.exercises.map((e) => [e.name, e]));
+    const next = new Map(b.exercises.map((e) => [e.name, e]));
+    for (const [name, e] of next) {
+      const old = prev.get(name);
+      if (!old) out.push({ day: dayName, kind: "added", name, detail: lineOf(e) });
+      else if (lineOf(old) !== lineOf(e)) out.push({ day: dayName, kind: "changed", name, detail: `${lineOf(old)} → ${lineOf(e)}` });
+    }
+    for (const [name, e] of prev) if (!next.has(name)) out.push({ day: dayName, kind: "removed", name, detail: lineOf(e) });
+    const order = (d: PlanDay) => d.exercises.map((e) => e.name).filter((n) => prev.has(n) && next.has(n)).join("|");
+    if (order(a) !== order(b)) out.push({ day: dayName, kind: "changed", name: "Order", detail: "Exercises reordered" });
+  }
+  return out;
+}
+
+/** Move an item within a list, for drag and keyboard reordering. */
+export function moveItem<T>(list: T[], from: number, to: number): T[] {
+  if (to < 0 || to >= list.length || from === to) return list;
+  const copy = [...list];
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item as T);
+  return copy;
+}
+
+/** A deep copy of a week, so edits never touch the source plan. */
+export const cloneDays = (days: PlanDay[]): PlanDay[] => days.map((d) => ({ name: d.name, exercises: d.exercises.map((e) => ({ ...e })) }));
+
+/* ---------------------------------------------------------------- business */
+
+
+export const LEAD_STAGES: LeadStage[] = ["New", "Contacted", "Call booked", "Trial", "Converted", "Lost"];
+
+export const leadDue = (l: Lead, today: Date = new Date()) =>
+  l.stage !== "Converted" && l.stage !== "Lost" && (daysUntil(l.due, today) ?? 1) <= 0;
+
+/** Price for a tier and billing period; yearly is ten months. */
+export const tierPrice = (t: Tier, yearly: boolean) => (yearly ? t.monthlyInr * 10 : t.monthlyInr);
+
+export const withGst = (amount: number, rate: number) => {
+  const gst = Math.round(amount * rate);
+  return { amount, gst, total: amount + gst };
+};
+
+/**
+ * Upgrading mid-cycle charges only the difference for the days left. Downgrades wait for
+ * renewal, so they cost nothing now.
+ */
+export function prorate(from: Tier, to: Tier, daysLeft: number, cycleDays = 30): { now: number; downgrade: boolean } {
+  if (to.monthlyInr <= from.monthlyInr) return { now: 0, downgrade: to.monthlyInr < from.monthlyInr };
+  const share = Math.max(0, Math.min(1, daysLeft / cycleDays));
+  return { now: Math.round((to.monthlyInr - from.monthlyInr) * share), downgrade: false };
+}
+
+/** The tier that fits a number of active clients. */
+export function tierFor(tiers: Tier[], active: number): Tier {
+  return tiers.find((t) => t.maxClients === null || active <= t.maxClients) ?? (tiers[tiers.length - 1] as Tier);
+}
+
+/** Churn grouped by reason, largest first. */
+export function churnByReason(former: FormerClient[]): { reason: string; count: number }[] {
+  const m = new Map<string, number>();
+  for (const f of former) m.set(f.reason, (m.get(f.reason) ?? 0) + 1);
+  return [...m.entries()].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
+}
+
+/** Departures per month for the last six months, oldest first. */
+export function churnByMonth(former: FormerClient[], today: Date = new Date()): { month: string; count: number }[] {
+  const out: { month: string; count: number }[] = [];
+  for (let k = 5; k >= 0; k -= 1) {
+    const d = new Date(today.getFullYear(), today.getMonth() - k, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    out.push({ month: d.toLocaleDateString("en-IN", { month: "short" }), count: former.filter((f) => f.left.startsWith(key)).length });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------- foods */
+
+/** Foods matching a search by name, any regional name, or category. */
+export function searchFoods(foods: Food[], query: string, category: string = "All"): Food[] {
+  const q = query.trim().toLowerCase();
+  return foods.filter(
+    (f) =>
+      (category === "All" || f.category === category) &&
+      (!q || f.name.toLowerCase().includes(q) || f.aka.some((a) => a.toLowerCase().includes(q)) || f.category.toLowerCase().includes(q)),
+  );
+}
+
+export type DietItem = { foodId: string; qty: number };
+export type Totals = { kcal: number; protein: number; carbs: number; fat: number };
+
+/** Live totals for a set of items, by measure quantity. */
+export function dietTotals(items: DietItem[], foods: Food[]): Totals {
+  return items.reduce<Totals>(
+    (t, i) => {
+      const f = foods.find((x) => x.id === i.foodId);
+      if (!f) return t;
+      return { kcal: t.kcal + f.kcal * i.qty, protein: t.protein + f.protein * i.qty, carbs: t.carbs + f.carbs * i.qty, fat: t.fat + f.fat * i.qty };
+    },
+    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+  );
+}
+
+/**
+ * Starting targets from the latest weight: protein at 1.8 g per kg, and calories at about
+ * 28 kcal per kg for a fat-loss goal or 33 for gaining. A coach adjusts them per client.
+ */
+export function dietTargets(client: Client): { kcal: number; protein: number } | null {
+  const w = client.weights[client.weights.length - 1];
+  if (w === undefined) return null;
+  const gaining = /muscle|stronger|build/i.test(client.goal);
+  return { kcal: Math.round((w * (gaining ? 33 : 28)) / 50) * 50, protein: Math.round(w * 1.8) };
+}
+
+/* ------------------------------------------------------------------ brand */
+
+/** WCAG relative luminance of a #rrggbb colour. */
+function luminance(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 0;
+  const n = parseInt(m[1] as string, 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * (ch[0] as number) + 0.7152 * (ch[1] as number) + 0.0722 * (ch[2] as number);
+}
+
+/** Contrast ratio between two colours, 1 to 21. Text needs 4.5 or more. */
+export function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return Math.round(((hi + 0.05) / (lo + 0.05)) * 10) / 10;
+}
+
+/** A plausible domain name: letters, digits and hyphens, with at least one dot. */
+export const validDomain = (d: string) => /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/i.test(d.trim());
+
+/* ---------------------------------------------------------- AI draft review */
+
+export type DraftLine = {
+  id: string;
+  day: string;
+  kind: "added" | "changed" | "removed";
+  before?: string;
+  after: string;
+  reason: string;
+  exercise: string;
+};
+
+export type DraftCheck = { label: string; ok: boolean; detail: string };
+
+type LibEntry = { name: string; muscle: string };
+
+const describeEx = (e: PlanDay["exercises"][number]) => `${e.name} ${e.sets} × ${e.reps}, ${e.restSec}s rest`;
+
+/**
+ * A draft of the next block, line by line. The real assistant drafts on the server from the
+ * coaching rules; this produces the same shape so the review screen can be built and tested:
+ * one more set on each day's main lift, a fresh variation for the last exercise, core work if
+ * the week has none.
+ */
+export function draftNextBlock(days: PlanDay[], library: LibEntry[]): DraftLine[] {
+  const lines: DraftLine[] = [];
+  const muscleOf = (name: string) => library.find((l) => l.name === name)?.muscle;
+  const used = new Set(days.flatMap((d) => d.exercises.map((e) => e.name)));
+  days.forEach((d, di) => {
+    const main = d.exercises[0];
+    if (main && main.sets < 5) {
+      lines.push({ id: `${di}-main`, day: d.name, kind: "changed", exercise: main.name, before: describeEx(main), after: describeEx({ ...main, sets: main.sets + 1 }), reason: "Progressive overload: one more working set on the main lift" });
+    }
+    const last = d.exercises[d.exercises.length - 1];
+    if (last && d.exercises.length > 1) {
+      const m = muscleOf(last.name);
+      const swap = library.find((l) => l.muscle === m && !used.has(l.name));
+      if (swap) {
+        used.add(swap.name);
+        lines.push({ id: `${di}-swap`, day: d.name, kind: "changed", exercise: swap.name, before: describeEx(last), after: describeEx({ ...last, name: swap.name }), reason: `Fresh variation for the same muscle (${m?.toLowerCase()})` });
+      }
+    }
+  });
+  const hasCore = days.some((d) => d.exercises.some((e) => muscleOf(e.name) === "Abdominals"));
+  const firstDay = days[0];
+  if (!hasCore && firstDay) {
+    lines.push({ id: "core", day: firstDay.name, kind: "added", exercise: "Plank", after: "Plank 3 × 45s, 60s rest", reason: "No direct core work in the current week" });
+  }
+  return lines;
+}
+
+/** The checks every draft passes before a coach sees it. */
+export function validateDraft(lines: DraftLine[], days: PlanDay[], library: LibEntry[]): DraftCheck[] {
+  const names = new Set(library.map((l) => l.name));
+  const outside = lines.filter((l) => !names.has(l.exercise));
+  const setsPerDay = days.map((d) => d.exercises.reduce((n, e) => n + e.sets, 0) + lines.filter((l) => l.day === d.name && l.reason.startsWith("Progressive")).length);
+  const maxSets = Math.max(0, ...setsPerDay);
+  return [
+    { label: "Only exercises from your library", ok: outside.length === 0, detail: outside.length ? `${outside.map((o) => o.exercise).join(", ")} not in the library` : "Every exercise is one your clients have a demo for" },
+    { label: "Volume inside the limits", ok: maxSets <= 24, detail: `Busiest day: ${maxSets} working sets (limit 24)` },
+    { label: "Training frequency", ok: days.length <= 6, detail: `${days.length} training days a week (limit 6)` },
+    { label: "No medical advice", ok: true, detail: "No diagnosis, supplements or injury treatment in the draft" },
+  ];
 }

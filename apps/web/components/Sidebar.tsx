@@ -99,7 +99,7 @@ export function Sidebar({ coach, usage }: { coach: { name: string; email: string
         ))}
       </nav>
 
-      <div className="rounded-xl border border-navLine bg-navRaised p-3">
+      <Link href="/coach/billing" className="block rounded-xl border border-navLine bg-navRaised p-3 transition-colors duration-[120ms] ease-quiet hover:border-navMuted">
         <div className="flex items-baseline justify-between">
           <span className="text-sm font-medium">{coach.plan} plan</span>
           <span className="tnum font-mono text-xs text-navMuted">
@@ -113,7 +113,7 @@ export function Sidebar({ coach, usage }: { coach: { name: string; email: string
         <p className="mt-2 text-xs text-navMuted">
           {usage.over ? `${usage.active - usage.limit} over your plan's limit` : `${usage.limit - usage.active} client places left`}
         </p>
-      </div>
+      </Link>
 
       <Link
         href="/coach/settings"

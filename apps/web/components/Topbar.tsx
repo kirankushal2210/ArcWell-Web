@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { shortDate } from "@/lib/domain";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { Avatar, Kbd } from "./ui";
 
 const TITLES: { match: (p: string) => boolean; title: string }[] = [
@@ -17,6 +18,7 @@ const TITLES: { match: (p: string) => boolean; title: string }[] = [
   { match: (p) => p.startsWith("/coach/settings"), title: "Settings" },
   { match: (p) => p.startsWith("/coach/clients"), title: "Clients" },
   { match: (p) => p.startsWith("/coach/get-started"), title: "Get started" },
+  { match: (p) => p.startsWith("/coach/billing"), title: "Plan and billing" },
 ];
 
 /**
@@ -31,7 +33,7 @@ export function Topbar({ coachName }: { coachName: string }) {
   useEffect(() => setToday(shortDate(new Date())), []);
 
   return (
-    <header className="material sticky top-0 z-10 flex h-14 shrink-0 items-center gap-4 border-b border-line bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] px-6 backdrop-blur-md backdrop-saturate-150">
+    <header className="material print:hidden sticky top-0 z-10 flex h-14 shrink-0 items-center gap-4 border-b border-line bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] px-6 backdrop-blur-md backdrop-saturate-150">
       <p className="flex min-w-0 items-center gap-2 text-base">
         <span className="hidden text-muted sm:inline">Workspace</span>
         <span className="hidden text-faint sm:inline" aria-hidden>
@@ -51,8 +53,51 @@ export function Topbar({ coachName }: { coachName: string }) {
           />
           <Kbd>⌘K</Kbd>
         </label>
-        <Avatar name={coachName} size={32} />
+        <AccountMenu name={coachName} />
       </div>
     </header>
+  );
+}
+
+/** The avatar opens the coach menu: profile, plan and billing, sign out. */
+function AccountMenu({ name }: { name: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    ref.current?.querySelector<HTMLElement>("a")?.focus();
+    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const items: { href: string; label: string; icon: IconName }[] = [
+    { href: "/coach/settings", label: "Profile and settings", icon: "settings" },
+    { href: "/coach/billing", label: "Plan and billing", icon: "rupee" },
+    { href: "/sign-in", label: "Sign out", icon: "logout" },
+  ];
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} aria-label={`Account menu for ${name}`} className="rounded-full transition-transform duration-[120ms] ease-quiet active:scale-95">
+        <Avatar name={name} size={32} />
+      </button>
+      {open ? (
+        <div role="menu" className="absolute right-0 top-11 z-30 w-56 rounded-xl border border-line bg-card p-1.5 shadow-md">
+          <p className="border-b border-line px-2.5 pb-2 pt-1 text-sm">
+            <span className="block font-medium">{name}</span>
+          </p>
+          {items.map((i) => (
+            <Link key={i.href} href={i.href} role="menuitem" onClick={() => setOpen(false)} className="mt-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-base hover:bg-surface focus:bg-surface">
+              <Icon name={i.icon} size={15} className="text-muted" />
+              {i.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
