@@ -512,3 +512,64 @@ export const QUICK_REPLIES = [
   "Protein is low. Add one more serving at lunch.",
   "Ease off the knee: swap squats for leg press this week.",
 ];
+
+/* ---------------------------------------------------------------- messaging */
+
+export type Attachment =
+  | { kind: "photo" | "pdf"; name: string; size: number; url: string }
+  | { kind: "voice"; url: string; seconds: number };
+
+export type InboxMessage = Message & { attachment?: Attachment; status?: "sent" | "failed"; broadcast?: boolean };
+
+export type Thread = { clientId: string; name: string; list: InboxMessage[]; unread: number; last: InboxMessage | undefined };
+
+/** Group messages into one thread per client, newest conversation first. */
+export function buildThreads(messages: InboxMessage[]): Thread[] {
+  const byClient = new Map<string, InboxMessage[]>();
+  for (const m of messages) byClient.set(m.clientId, [...(byClient.get(m.clientId) ?? []), m]);
+  return [...byClient.entries()]
+    .map(([clientId, list]) => ({
+      clientId,
+      name: list[0]?.clientName ?? "Client",
+      list,
+      unread: list.filter((m) => m.unread).length,
+      last: list[list.length - 1],
+    }))
+    .sort((a, b) => (b.last?.at ?? "").localeCompare(a.last?.at ?? "") || b.unread - a.unread);
+}
+
+/** Threads whose client name or any message text matches the search. */
+export function searchThreads(threads: Thread[], query: string): Thread[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return threads;
+  return threads.filter((t) => t.name.toLowerCase().includes(q) || t.list.some((m) => m.text.toLowerCase().includes(q)));
+}
+
+export type Audience = "active" | "attention" | "renewing" | JourneyStage;
+
+export const AUDIENCE_LABELS: Record<Audience, string> = {
+  active: "Every active client",
+  attention: "Clients who need attention",
+  renewing: "Renewing this week",
+  onboarding: "In onboarding",
+  transformation: "In transformation",
+  maintenance: "In maintenance",
+  ongoing: "In ongoing coaching",
+};
+
+/** Who a broadcast reaches. Each person gets a private copy, never a group thread. */
+export function broadcastAudience(clients: Client[], audience: Audience): Client[] {
+  switch (audience) {
+    case "active":
+      return clients.filter((c) => c.status === "active");
+    case "attention":
+      return clients.filter(needsAttention);
+    case "renewing":
+      return clients.filter((c) => renewingThisWeek(c));
+    default:
+      return clients.filter((c) => journeyView(c.journey).stage === audience);
+  }
+}
+
+export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+export const formatSeconds = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
