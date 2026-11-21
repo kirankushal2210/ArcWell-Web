@@ -1,16 +1,15 @@
 import { CheckInReview } from "@/components/CheckInReview";
 import { PageTitle } from "@/components/ui";
-import { CHECK_INS } from "@/lib/data";
+import { CHECK_INS, CLIENTS } from "@/lib/data";
+
+export const metadata = { title: "Progress — Arcwell" };
 
 export default function CheckInsPage() {
-  const queue = [...CHECK_INS].sort((a, b) => Number(a.reviewed) - Number(b.reviewed));
+  const waiting = CHECK_INS.filter((k) => !k.reviewed).length;
   return (
     <>
-      <PageTitle
-        title="Progress"
-        sub={`${queue.filter((k) => !k.reviewed).length} check-ins waiting · oldest first`}
-      />
-      <CheckInReview checkIns={queue} />
+      <PageTitle title="Progress" sub={`${waiting} check-ins waiting · oldest first · press ? for shortcuts`} />
+      <CheckInReview checkIns={CHECK_INS} clients={CLIENTS} />
     </>
   );
 }
