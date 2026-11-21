@@ -138,11 +138,11 @@ export function Inbox({ messages, clients }: { messages: Message[]; clients: Cli
       ) : null}
 
       <div
-        className={`grid h-[calc(100vh-280px)] min-h-[520px] grid-cols-1 overflow-hidden rounded-xl border border-line bg-card shadow-sm lg:grid-cols-[280px_minmax(0,1fr)] ${
+        className={`grid grid-cols-1 overflow-hidden lg:h-[calc(100vh-280px)] lg:min-h-[520px] rounded-xl border border-line bg-card shadow-sm lg:grid-cols-[280px_minmax(0,1fr)] ${
           showContext ? "2xl:grid-cols-[280px_minmax(0,1fr)_300px]" : ""
         }`}
       >
-        <div className="flex min-h-0 flex-col border-r border-line">
+        <div className="flex max-h-72 min-h-0 flex-col border-b border-line lg:max-h-none lg:border-b-0 lg:border-r">
           <p className="flex items-center justify-between border-b border-line bg-surface px-4 py-2.5 text-sm font-medium text-muted">
             Conversations
             <span className="tnum font-mono text-xs">{threads.length}</span>
@@ -183,7 +183,7 @@ export function Inbox({ messages, clients }: { messages: Message[]; clients: Cli
           </ul>
         </div>
 
-        <div className="flex min-h-0 flex-col">
+        <div className="flex h-[560px] min-h-0 flex-col lg:h-auto">
           <div className="flex items-center gap-3 border-b border-line px-5 py-3">
             <Avatar name={active.name} size={32} />
             <div className="min-w-0 flex-1">

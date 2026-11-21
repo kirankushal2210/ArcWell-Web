@@ -1,80 +1,48 @@
 # Design tokens
 
-Ported from the Arcwell mobile app so both products look like one product.
-These are the only values to use. No raw hex outside this file.
+The source of truth is `apps/web/app/globals.css`; this file mirrors it. No raw hex anywhere
+else in the code: components use the Tailwind names in the right-hand column.
 
-## Palette
+## Direction
 
-```
-ink900  #0A0A0A    ink800  #151515    ink700  #1F1F1F    ink650 #1A1A1A
-ink600  #2B2B2B    ink500  #5C5C5C    ink450  #8A8A8A    ink400 #767676
-mist300 #A3A3A3    mist50  #F2F2F2    mist25  #F5F5F5    mist0  #FFFFFF
-mist100 #E0E0E0    mist75  #EBEBEB
-red600  #B71C1C    red550  #C62828    red500  #D32F2F    red400 #FF5A52
-green400 #7BD389   green700 #2E7D32
-blue400 #8AB4F8    amber400 #F5B841   amber700 #9A5B00
-```
+A strength gym at 6 am: warm graphite neutrals (chalk, rubber floor), plate red as the brand,
+and three pillar colours that only ever carry meaning in data. Quiet chrome, rich moments
+(charts, the adherence meter, the journey track).
 
-## Semantic roles
+## Colour
 
-Light theme is the web default.
-
-| Role | Light | Dark |
-|---|---|---|
-| bg | #FBFBFA | #0A0A0A |
-| surface | #F4F4F1 | #151515 |
-| surfaceRaised | #EBEBEB | #1F1F1F |
-| text | #0A0A0A | #F2F2F2 |
-| textMuted | #5C5C5C | #A3A3A3 |
-| textDisabled | #A3A3A3 | #5C5C5C |
-| brand (accent, used rarely) | #B93A31 | #FF5A52 |
-| brandHover | #B71C1C | #B71C1C |
-| onBrand | #FFFFFF | #FFFFFF |
-| accent | #C62828 | #FF5A52 |
-| training | #C62828 | #FF5A52 |
-| nutrition | #2E7D32 | #7BD389 |
-| recovery | #C62828 | #FF5A52 |
-| success | #2E7D32 | #7BD389 |
-| warning | #9A5B00 | #F5B841 |
-| danger | #C62828 | #FF5A52 |
-| border | #E4E4DF | #2B2B2B |
-| borderStrong | #8A8A8A | #767676 |
-| focus | #C62828 | #FF5A52 |
-
-Rules:
-- Primary buttons are **brand** with **onBrand** text.
-- Never use colour alone to carry meaning — pair it with a label or an icon.
-
-## Spacing (4-point grid, only these steps)
-
-```
-0 · 4 · 8 · 12 · 16 · 24 · 32 · 48
-```
-
-Rhythm: inline gap 8 · rows within a group 8 · card padding 16 · screen gutter 16 ·
-between unrelated groups 24.
-
-## Radius
-
-```
-sm 10 · md 12 · lg 16 · xl 28 · full 9999
-```
-
-Chips and set cells use sm; buttons and inputs md; cards lg; sheets xl; avatars pill full.
-
-## Era
-
-Primary buttons are **ink**, not brand: a page should not have two competing coolers.
-The brand red marks one thing per screen — the attention signal — and interactive selection.
+| Token | Value | Tailwind | Use |
+|---|---|---|---|
+| `--bg` | #f7f6f3 | `bg` | page |
+| `--surface` | #f0efea | `surface` | table headers, hovers |
+| `--raised` | #e7e5df | `raised` | tracks, empty plates |
+| `--card` | #ffffff | `card` | cards |
+| `--border` | #e3e1da | `line` | hairlines |
+| `--strong` | #c6c3ba | `strong` | stronger borders |
+| `--text` | #1b1a17 | `ink` | primary text |
+| `--text-muted` | #67645c | `muted` | secondary text |
+| `--text-faint` | #98958c | `faint` | meta |
+| `--brand` | #b9342b | `brand` | primary buttons, selection, the one number that matters |
+| `--brand-hover` / `--brand-press` | #a12c24 / #8c261f | `brandHover` / `brandPress` | states |
+| `--brand-ink` | #9e2c24 | `brandInk` | red text on light surfaces |
+| `--on-brand` | #ffffff | `onBrand` | text on brand (5.9:1) |
+| `--success` / `--warning` / `--danger` | #2c7a4b / #8f5c00 / #b9342b | same | status |
+| `--pillar-training` / `-nutrition` / `-recovery` | #b9342b / #2c7a4b / #3b5c9c | same | data only |
+| `--tint-brand` / `-success` / `-warning` / `-info` | #f9e9e6 / #e6f2ea / #f8efdc / #e9eef8 | `tint*` | pill backgrounds |
+| `--nav`, `--nav-raised`, `--nav-line` | #1d1c19, #2a2925, #34322d | `nav*` | dark sidebar |
+| `--nav-text`, `--nav-muted`, `--nav-faint` | #f3f1ec, #a9a59b, #77736a | `nav*` | sidebar text |
+| `--focus` | = brand (light on the dark rail) | — | 2 px focus ring |
 
 ## Type
 
-- Family: **Inter** only.
-- Weights: 400 regular · 500 medium · 600 semibold · 700 bold.
-- Sizes: 12 · 14 · 16 · 18 · 22 · 32.
-- Body tracking near 0; display headings at weight 600 with about -0.03em.
+Inter for text, JetBrains Mono for figures, dates and counts (tabular). Sizes (px/line):
+2xs 10/14 · xs 11/16 · sm 12/18 · base 13/20 · md 14/22 · lg 15/24 · xl 20/28 · 2xl 26/32 ·
+3xl 30/36 · 4xl 36/40. Weights 400/500/600. Headings tighten (−0.015 to −0.03 em); small text
+never does. Sentence case; no tracked capitals.
 
-## Borders and focus
+## Shape, spacing, motion
 
-- Border width 1.
-- Focus ring 2 px in the `focus` colour, always visible, never removed.
+Radius: sm 6 · md 8 · lg 12 (controls, inner pills) · xl 16 (cards). 4-point spacing. Shadows
+`shadow-sm` / `shadow-md` (neutral, soft). One easing `cubic-bezier(0.2, 0, 0, 1)`, 120 ms for
+feedback, 220 ms for entrances; press feedback on pointer-down (`active:scale-[0.97]`); all
+motion respects `prefers-reduced-motion`.
