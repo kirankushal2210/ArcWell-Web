@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ProfileTabs } from "@/components/ProfileTabs";
 import { Icon } from "@/components/icons";
-import { CHECK_INS, CLIENTS, MESSAGES, PLANS, SAMPLE_WEEK } from "@/lib/data";
+import { CHECK_INS, CLIENTS, MEASUREMENTS, MESSAGES, PHOTO_SETS, PLANS, SAMPLE_WEEK } from "@/lib/data";
 
 export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,6 +23,8 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         checkIns={CHECK_INS.filter((k) => k.clientId === client.id)}
         messages={MESSAGES.filter((m) => m.clientId === client.id)}
         week={SAMPLE_WEEK}
+        measurements={MEASUREMENTS[client.id] ?? []}
+        photos={PHOTO_SETS[client.id] ?? []}
       />
     </>
   );

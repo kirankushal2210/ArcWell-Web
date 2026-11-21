@@ -31,7 +31,7 @@ export function Topbar({ coachName }: { coachName: string }) {
   useEffect(() => setToday(shortDate(new Date())), []);
 
   return (
-    <header className="material sticky top-0 z-10 flex h-14 shrink-0 items-center gap-4 border-b border-line bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] px-6 backdrop-blur-md backdrop-saturate-150">
+    <header className="material print:hidden sticky top-0 z-10 flex h-14 shrink-0 items-center gap-4 border-b border-line bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] px-6 backdrop-blur-md backdrop-saturate-150">
       <p className="flex min-w-0 items-center gap-2 text-base">
         <span className="hidden text-muted sm:inline">Workspace</span>
         <span className="hidden text-faint sm:inline" aria-hidden>

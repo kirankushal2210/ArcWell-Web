@@ -385,3 +385,46 @@ export const FORMER_CLIENTS: FormerClient[] = [
   { id: "f07", name: "Imran Qureshi", goal: "Get stronger", joined: isoDaysAgo(120), left: isoDaysAgo(70), stageAtExit: "transformation", reason: "Switched coach" },
   { id: "f08", name: "Ankita Joshi", goal: "Lose 8 kg", joined: isoDaysAgo(400), left: isoDaysAgo(30), stageAtExit: "ongoing", reason: "Budget" },
 ];
+
+/* --------------------------------------------------------------- progress */
+
+/** One body measurement tracked over time: one dated entry per check. */
+export type Measurement = { label: string; unit: string; entries: { date: string; value: number }[] };
+
+/** A set of progress photos taken on one day, from the client's app. */
+export type PhotoSet = { date: string; angles: string[] };
+
+/**
+ * Measurements every three weeks since the transformation began, drifting by a small, client-
+ * specific amount so trends differ. Clients still onboarding have none yet.
+ */
+function sampleMeasurements(c: Client, i: number): Measurement[] {
+  if (!c.journey.started.transformation) return [];
+  const base = [
+    { label: "Waist", unit: "cm", start: 82 + (i % 9) * 2, step: -0.6 - (i % 4) * 0.3 },
+    { label: "Hips", unit: "cm", start: 96 + (i % 7) * 2, step: -0.4 - (i % 3) * 0.2 },
+    { label: "Chest", unit: "cm", start: 92 + (i % 8) * 2, step: (i % 2 ? 0.3 : -0.2) },
+    { label: "Upper arm", unit: "cm", start: 30 + (i % 5), step: (i % 3 ? 0.2 : -0.1) },
+  ];
+  const count = 5;
+  return base.map((m) => ({
+    label: m.label,
+    unit: m.unit,
+    entries: Array.from({ length: count }, (_, k) => ({
+      date: isoDaysAgo((count - 1 - k) * 21),
+      value: Math.round((m.start + m.step * k + ((i + k) % 3) * 0.2) * 10) / 10,
+    })),
+  }));
+}
+
+export const MEASUREMENTS: Record<string, Measurement[]> = Object.fromEntries(CLIENTS.map((c, i) => [c.id, sampleMeasurements(c, i)]));
+
+/** Progress photos roughly every four weeks, front, side and back. */
+export const PHOTO_SETS: Record<string, PhotoSet[]> = Object.fromEntries(
+  CLIENTS.map((c, i) => [
+    c.id,
+    c.journey.started.transformation
+      ? Array.from({ length: 2 + (i % 4) }, (_, k) => ({ date: isoDaysAgo(k * 28 + (i % 6)), angles: ["Front", "Side", "Back"] })).reverse()
+      : [],
+  ]),
+);
