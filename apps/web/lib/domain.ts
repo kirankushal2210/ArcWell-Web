@@ -1,7 +1,7 @@
 // Pure helpers: sorting, filtering and the numbers the screens show. No React, no data fetching,
 // so these are the functions a unit test suite would cover first.
 
-import type { CheckIn, Client, ClientStatus, FormerClient, Journey, JourneyStage, Message, Plan, PlanDay } from "./data";
+import type { CheckIn, Client, ClientStatus, FormerClient, Journey, JourneyStage, Lead, LeadStage, Message, Plan, PlanDay, Tier } from "./data";
 
 export const STATUS_ORDER: Record<ClientStatus, number> = {
   active: 0,
@@ -641,3 +641,52 @@ export function moveItem<T>(list: T[], from: number, to: number): T[] {
 
 /** A deep copy of a week, so edits never touch the source plan. */
 export const cloneDays = (days: PlanDay[]): PlanDay[] => days.map((d) => ({ name: d.name, exercises: d.exercises.map((e) => ({ ...e })) }));
+
+/* ---------------------------------------------------------------- business */
+
+
+export const LEAD_STAGES: LeadStage[] = ["New", "Contacted", "Call booked", "Trial", "Converted", "Lost"];
+
+export const leadDue = (l: Lead, today: Date = new Date()) =>
+  l.stage !== "Converted" && l.stage !== "Lost" && (daysUntil(l.due, today) ?? 1) <= 0;
+
+/** Price for a tier and billing period; yearly is ten months. */
+export const tierPrice = (t: Tier, yearly: boolean) => (yearly ? t.monthlyInr * 10 : t.monthlyInr);
+
+export const withGst = (amount: number, rate: number) => {
+  const gst = Math.round(amount * rate);
+  return { amount, gst, total: amount + gst };
+};
+
+/**
+ * Upgrading mid-cycle charges only the difference for the days left. Downgrades wait for
+ * renewal, so they cost nothing now.
+ */
+export function prorate(from: Tier, to: Tier, daysLeft: number, cycleDays = 30): { now: number; downgrade: boolean } {
+  if (to.monthlyInr <= from.monthlyInr) return { now: 0, downgrade: to.monthlyInr < from.monthlyInr };
+  const share = Math.max(0, Math.min(1, daysLeft / cycleDays));
+  return { now: Math.round((to.monthlyInr - from.monthlyInr) * share), downgrade: false };
+}
+
+/** The tier that fits a number of active clients. */
+export function tierFor(tiers: Tier[], active: number): Tier {
+  return tiers.find((t) => t.maxClients === null || active <= t.maxClients) ?? (tiers[tiers.length - 1] as Tier);
+}
+
+/** Churn grouped by reason, largest first. */
+export function churnByReason(former: FormerClient[]): { reason: string; count: number }[] {
+  const m = new Map<string, number>();
+  for (const f of former) m.set(f.reason, (m.get(f.reason) ?? 0) + 1);
+  return [...m.entries()].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count);
+}
+
+/** Departures per month for the last six months, oldest first. */
+export function churnByMonth(former: FormerClient[], today: Date = new Date()): { month: string; count: number }[] {
+  const out: { month: string; count: number }[] = [];
+  for (let k = 5; k >= 0; k -= 1) {
+    const d = new Date(today.getFullYear(), today.getMonth() - k, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    out.push({ month: d.toLocaleDateString("en-IN", { month: "short" }), count: former.filter((f) => f.left.startsWith(key)).length });
+  }
+  return out;
+}

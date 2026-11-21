@@ -1,4 +1,5 @@
-import { Avatar, Button, Card, PageTitle, SectionTitle, inputClass } from "@/components/ui";
+import Link from "next/link";
+import { Avatar, Card, PageTitle, SectionTitle, buttonClass, inputClass } from "@/components/ui";
 import { BrandMark } from "@/components/Sidebar";
 import { CLIENTS, COACH } from "@/lib/data";
 import { inr, planUsage } from "@/lib/domain";
@@ -93,9 +94,9 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="mt-3">
-            <Button variant="secondary" className="w-full">
-              Change plan
-            </Button>
+            <Link href="/coach/billing" className={`${buttonClass("secondary")} w-full`}>
+              Change plan and invoices
+            </Link>
           </div>
 
           <SectionTitle>Branding</SectionTitle>
