@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------
+   Tokens. Direction: a strength gym at 6 am. Warm graphite neutrals
+   (chalk and rubber floor), plate red as the brand, and three pillar
+   colours that only ever carry meaning in data.
+   ------------------------------------------------------------------ */
+:root {
+  /* Neutral ramp, warm graphite */
+  --bg: #f7f6f3;
+  --surface: #f0efea;
+  --raised: #e7e5df;
+  --card: #ffffff;
+  --border: #e3e1da;
+  --strong: #c6c3ba;
+
+  --text: #1b1a17;
+  --text-muted: #67645c;
+  --text-faint: #98958c;
+
+  /* Plate red: the brand. Primary actions, selection, the one number that matters. */
+  --brand: #b9342b;
+  --brand-hover: #a12c24;
+  --brand-press: #8c261f;
+  --brand-ink: #9e2c24; /* red used as text on light surfaces, 6.5:1 */
+  --on-brand: #ffffff;
+
+  --success: #2c7a4b;
+  --warning: #8f5c00;
+  --danger: #b9342b;
+
+  --focus: #b9342b;
+
+  /* Colour layer. The chrome stays neutral; these carry meaning in data. */
+  --accent-2: #2b6a61; /* secondary data colour: targets, comparisons */
+  --pillar-training: #b9342b;
+  --pillar-nutrition: #2c7a4b;
+  --pillar-recovery: #3b5c9c;
+
+  --tint-brand: #f9e9e6;
+  --tint-success: #e6f2ea;
+  --tint-warning: #f8efdc;
+  --tint-info: #e9eef8;
+
+  /* Structural chrome: a heavier, darker material for the navigation rail. */
+  --nav: #1d1c19;
+  --nav-raised: #2a2925;
+  --nav-line: #34322d;
+  --nav-text: #f3f1ec;
+  --nav-muted: #a9a59b;
+  --nav-faint: #77736a;
+
+  /* Material: soft, neutral, small. Depth on light comes from these and hairlines. */
+  --shadow-sm: 0 1px 2px rgba(27, 26, 23, 0.05);
+  --shadow-md: 0 1px 2px rgba(27, 26, 23, 0.04), 0 4px 12px rgba(27, 26, 23, 0.06);
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --fast: 120ms;
+  --slow: 220ms;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Figures never jitter between renders. */
+.tnum,
+td,
+th,
+input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* On the dark rail, red would fall below 3:1, so focus turns light there. */
+.bg-nav *:focus-visible {
+  outline-color: var(--nav-text);
+}
+
+::selection {
+  background: var(--tint-brand);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--strong);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Quiet entrance: one, short, only on the main content. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+main > div {
+  animation: rise var(--slow) var(--ease) both;
+}
+
+/* A chart line draws itself once, from the start of the series. */
+@keyframes draw {
+  from {
+    stroke-dashoffset: var(--len);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.chart-draw {
+  stroke-dasharray: var(--len);
+  animation: draw 700ms var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main > div,
+  .chart-draw {
+    animation: none;
+  }
+  * {
+    transition-duration: 1ms !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .material {
+    background: var(--bg) !important;
+    backdrop-filter: none !important;
+  }
+}

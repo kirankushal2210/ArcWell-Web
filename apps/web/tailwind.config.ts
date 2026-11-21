@@ -1,0 +1,82 @@
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        bg: "var(--bg)",
+        surface: "var(--surface)",
+        raised: "var(--raised)",
+        card: "var(--card)",
+        nav: "var(--nav)",
+        navRaised: "var(--nav-raised)",
+        navLine: "var(--nav-line)",
+        navText: "var(--nav-text)",
+        navMuted: "var(--nav-muted)",
+        navFaint: "var(--nav-faint)",
+        brandInk: "var(--brand-ink)",
+        brandPress: "var(--brand-press)",
+        ink: "var(--text)",
+        muted: "var(--text-muted)",
+        faint: "var(--text-faint)",
+        brand: "var(--brand)",
+        brandHover: "var(--brand-hover)",
+        onBrand: "var(--on-brand)",
+        success: "var(--success)",
+        warning: "var(--warning)",
+        danger: "var(--danger)",
+        line: "var(--border)",
+        strong: "var(--strong)",
+        focus: "var(--focus)",
+        accent2: "var(--accent-2)",
+        training: "var(--pillar-training)",
+        nutrition: "var(--pillar-nutrition)",
+        recovery: "var(--pillar-recovery)",
+        tintBrand: "var(--tint-brand)",
+        tintSuccess: "var(--tint-success)",
+        tintWarning: "var(--tint-warning)",
+        tintInfo: "var(--tint-info)",
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", "Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+      },
+      boxShadow: {
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+      },
+      fontSize: {
+        "2xs": ["10px", { lineHeight: "14px" }],
+        xs: ["11px", { lineHeight: "16px" }],
+        sm: ["12px", { lineHeight: "18px" }],
+        base: ["13px", { lineHeight: "20px" }],
+        md: ["14px", { lineHeight: "22px" }],
+        lg: ["15px", { lineHeight: "24px" }],
+        xl: ["20px", { lineHeight: "28px" }],
+        "2xl": ["26px", { lineHeight: "32px" }],
+        "3xl": ["30px", { lineHeight: "36px" }],
+        "4xl": ["36px", { lineHeight: "40px" }],
+      },
+      borderRadius: {
+        sm: "6px",
+        md: "8px",
+        lg: "12px",
+        xl: "16px",
+      },
+      spacing: {
+        0.5: "2px",
+        1.5: "6px",
+        2.5: "10px",
+        4.5: "18px",
+        11: "44px",
+      },
+      transitionTimingFunction: {
+        quiet: "cubic-bezier(0.2, 0, 0, 1)",
+      },
+    },
+  },
+  plugins: [],
+};
+
+export default config;
