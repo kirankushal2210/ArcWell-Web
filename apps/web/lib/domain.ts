@@ -479,3 +479,36 @@ export function measurementChange(m: { entries: { value: number }[] }): number |
   if (m.entries.length < 2) return null;
   return Math.round(((m.entries[m.entries.length - 1] as { value: number }).value - (m.entries[0] as { value: number }).value) * 10) / 10;
 }
+
+/* ------------------------------------------------------------ check-in queue */
+
+/** Unreviewed first, oldest first; reviewed after them, newest first. */
+export function queueOrder(checkIns: CheckIn[], reviewed: (k: CheckIn) => boolean = (k) => k.reviewed): CheckIn[] {
+  const waiting = checkIns.filter((k) => !reviewed(k)).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
+  const done = checkIns.filter(reviewed).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+  return [...waiting, ...done];
+}
+
+/** A check-in left unreviewed for three days or more is overdue for a reply. */
+export function reviewOverdue(k: CheckIn, isReviewed: boolean, today: Date = new Date()): boolean {
+  const d = daysUntil(k.submittedAt, today);
+  return !isReviewed && d !== null && d <= -3;
+}
+
+/** The next date a client's weekly check-in is due, from their check-in weekday. */
+export function nextDueDate(checkInDay: string, today: Date = new Date()): string {
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const target = days.indexOf(checkInDay.slice(0, 3));
+  const d = new Date(today);
+  const delta = ((target - d.getDay() + 7) % 7) || 7;
+  d.setDate(d.getDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+export const QUICK_REPLIES = [
+  "Great week. Keep everything the same.",
+  "Let's add 2.5 kg to the main lifts next week.",
+  "Sleep is the priority this week: aim for 7 hours.",
+  "Protein is low. Add one more serving at lunch.",
+  "Ease off the knee: swap squats for leg press this week.",
+];
